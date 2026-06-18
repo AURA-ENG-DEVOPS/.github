@@ -1,13 +1,4 @@
-name: Deploy
-
-# Gerado a partir do template de workflow da org (AURA-ENG-DEVOPS/.github).
-# Este arquivo so faz a "chamada" — a logica de deploy fica centralizada em
-# AURA-ENG-DEVOPS/.github/.github/workflows/deploy-docker-compose.yml
-# (editar la beneficia todos os repos que usam este template).
-#
-# Antes de usar, ajuste os valores marcados com "<<< AJUSTAR >>>" abaixo:
-#   - runner_label: label do runner self-hosted registrado pra essa app/unidade.
-#   - service:       nome do servico no docker-compose.yml do seu repo.
+name: Deploy SoxManager
 
 on:
   push:

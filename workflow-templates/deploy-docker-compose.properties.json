@@ -1,5 +1,5 @@
 {
-  "name": "Deploy (Docker Compose / self-hosted)",
+  "name": "Deploy SoxManager",
   "description": "Builda e atualiza um servico via docker compose. Chama o workflow reutilizavel central da AURA-ENG-DEVOPS.",
   "categories": ["Deployment"]
 }
