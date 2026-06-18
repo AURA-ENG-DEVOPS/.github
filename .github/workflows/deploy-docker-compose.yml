@@ -1,0 +1,47 @@
+name: Deploy (Docker Compose)
+
+on:
+  workflow_call:
+    inputs:
+      runner_label:
+        description: "Label do runner self-hosted onde o deploy deve rodar (ex.: soxmanager-borborema)"
+        required: true
+        type: string
+      service:
+        description: "Nome do servico no docker-compose.yml a ser construido/atualizado"
+        required: true
+        type: string
+      compose_file:
+        description: "Caminho do arquivo compose, relativo a raiz do repo"
+        required: false
+        type: string
+        default: "docker-compose.yml"
+      working_directory:
+        description: "Diretorio de trabalho dentro do repo onde o compose deve ser executado"
+        required: false
+        type: string
+        default: "."
+
+concurrency:
+  group: deploy-${{ inputs.service }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ${{ inputs.runner_label }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working_directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build da imagem (${{ inputs.service }})
+        run: docker compose -f "${{ inputs.compose_file }}" build "${{ inputs.service }}"
+
+      - name: Atualiza o container (${{ inputs.service }})
+        run: docker compose -f "${{ inputs.compose_file }}" up -d "${{ inputs.service }}"
+
+      - name: Limpeza de imagens antigas
+        if: always()
+        run: docker image prune -f

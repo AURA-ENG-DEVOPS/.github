@@ -1,0 +1,5 @@
+{
+  "name": "Deploy (Docker Compose / self-hosted)",
+  "description": "Builda e atualiza um servico via docker compose. Chama o workflow reutilizavel central da AURA-ENG-DEVOPS.",
+  "categories": ["Deployment"]
+}
