@@ -21,6 +21,17 @@ on:
         required: false
         type: string
         default: "."
+      host_dirs:
+        description: >
+          Caminhos absolutos no host (um por linha) que precisam existir.
+        required: false
+        type: string
+        default: ""
+      host_dirs_owner:
+        description: "uid:gid a aplicar nos host_dirs"
+        required: false
+        type: string
+        default: "1000:1000"
 
 concurrency:
   group: deploy-${{ inputs.service }}
@@ -35,6 +46,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Criar diretorios no host
+        if: ${{ inputs.host_dirs != '' }}
+        run: |
+          printf '%s\n' "${{ inputs.host_dirs }}" | while IFS= read -r dir; do
+            [ -z "$dir" ] && continue
+            echo "[i] checando $dir"
+            docker run --rm -v /:/hostroot alpine sh -c \
+              "[ -d /hostroot$dir ] || (mkdir -p /hostroot$dir && chown -R ${{ inputs.host_dirs_owner }} /hostroot$dir && echo '[i] criado e chown aplicado em $dir')"
+          done
 
       - name: Build da imagem (${{ inputs.service }})
         run: docker compose -f "${{ inputs.compose_file }}" build "${{ inputs.service }}"
