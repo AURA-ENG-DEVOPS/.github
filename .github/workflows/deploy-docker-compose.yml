@@ -37,13 +37,6 @@ on:
           Nome do GitHub Environment (dev/hml/prd) pra aplicar nesse deploy
         required: true
         type: string
-      local_image:
-        description: >
-          Nome:tag local da imagem buildada pelo compose (ex.: soxmanager-borborema-dev:local,
-          definido no "image:" do service no docker-compose.yml). Vazio = usa "<service>:local".
-        required: false
-        type: string
-        default: ""
       push_to_registry:
         description: >
           Publica a imagem no GHCR depois do build, com tag semver
@@ -85,18 +78,8 @@ jobs:
               "[ -d /hostroot$dir ] || (mkdir -p /hostroot$dir && chown -R ${{ inputs.host_dirs_owner }} /hostroot$dir && echo '[i] criado e chown aplicado em $dir')"
           done
 
-      - name: Build da imagem (${{ inputs.service }})
-        run: docker compose -f "${{ inputs.compose_file }}" build "${{ inputs.service }}"
-
-      - name: Login no GHCR
-        if: ${{ inputs.push_to_registry == 'true' }}
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-      - name: Publica imagem no GHCR
-        if: ${{ inputs.push_to_registry == 'true' }}
+      - name: Calcula tag da imagem (semver)
         run: |
-          LOCAL_IMAGE="${{ inputs.local_image }}"
-          if [ -z "$LOCAL_IMAGE" ]; then LOCAL_IMAGE="${{ inputs.service }}:local"; fi
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           REMOTE_IMAGE="ghcr.io/$OWNER_LC/${{ inputs.service }}"
           SHA_SHORT="${GITHUB_SHA:0:7}"
@@ -108,11 +91,24 @@ jobs:
             dev) TAG="$VERSION-dev.$SHA_SHORT" ;;
             *) TAG="$VERSION-$ENVIRONMENT.$SHA_SHORT" ;;
           esac
-          docker tag "$LOCAL_IMAGE" "$REMOTE_IMAGE:$TAG"
-          docker push "$REMOTE_IMAGE:$TAG"
-          echo "[i] publicado $REMOTE_IMAGE:$TAG"
-          if [ "$ENVIRONMENT" = "prd" ]; then
-            docker tag "$LOCAL_IMAGE" "$REMOTE_IMAGE:latest"
+          echo "REMOTE_IMAGE=$REMOTE_IMAGE" >> "$GITHUB_ENV"
+          echo "APP_IMAGE=$REMOTE_IMAGE:$TAG" >> "$GITHUB_ENV"
+          echo "[i] imagem desta execucao: $REMOTE_IMAGE:$TAG"
+
+      - name: Build da imagem (${{ inputs.service }})
+        run: docker compose -f "${{ inputs.compose_file }}" build "${{ inputs.service }}"
+
+      - name: Login no GHCR
+        if: ${{ inputs.push_to_registry == 'true' }}
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Publica imagem no GHCR
+        if: ${{ inputs.push_to_registry == 'true' }}
+        run: |
+          docker push "$APP_IMAGE"
+          echo "[i] publicado $APP_IMAGE"
+          if [ "${{ inputs.environment }}" = "prd" ]; then
+            docker tag "$APP_IMAGE" "$REMOTE_IMAGE:latest"
             docker push "$REMOTE_IMAGE:latest"
             echo "[i] publicado $REMOTE_IMAGE:latest"
           fi
