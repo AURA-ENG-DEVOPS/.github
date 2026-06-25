@@ -37,6 +37,28 @@ on:
           Nome do GitHub Environment (dev/hml/prd) pra aplicar nesse deploy
         required: true
         type: string
+      local_image:
+        description: >
+          Nome:tag local da imagem buildada pelo compose (ex.: soxmanager-borborema-dev:local,
+          definido no "image:" do service no docker-compose.yml). Vazio = usa "<service>:local".
+        required: false
+        type: string
+        default: ""
+      push_to_registry:
+        description: >
+          Publica a imagem no GHCR depois do build, com tag semver
+        required: false
+        type: string
+        default: "true"
+      version:
+        description: >
+          Versao semver core da app sendo deployada (ex.: 0.6.16)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
 
 concurrency:
   group: deploy-${{ inputs.service }}
@@ -65,6 +87,35 @@ jobs:
 
       - name: Build da imagem (${{ inputs.service }})
         run: docker compose -f "${{ inputs.compose_file }}" build "${{ inputs.service }}"
+
+      - name: Login no GHCR
+        if: ${{ inputs.push_to_registry == 'true' }}
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Publica imagem no GHCR
+        if: ${{ inputs.push_to_registry == 'true' }}
+        run: |
+          LOCAL_IMAGE="${{ inputs.local_image }}"
+          if [ -z "$LOCAL_IMAGE" ]; then LOCAL_IMAGE="${{ inputs.service }}:local"; fi
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REMOTE_IMAGE="ghcr.io/$OWNER_LC/${{ inputs.service }}"
+          SHA_SHORT="${GITHUB_SHA:0:7}"
+          VERSION="${{ inputs.version }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+          case "$ENVIRONMENT" in
+            prd) TAG="$VERSION" ;;
+            hml) TAG="$VERSION-rc.$SHA_SHORT" ;;
+            dev) TAG="$VERSION-dev.$SHA_SHORT" ;;
+            *) TAG="$VERSION-$ENVIRONMENT.$SHA_SHORT" ;;
+          esac
+          docker tag "$LOCAL_IMAGE" "$REMOTE_IMAGE:$TAG"
+          docker push "$REMOTE_IMAGE:$TAG"
+          echo "[i] publicado $REMOTE_IMAGE:$TAG"
+          if [ "$ENVIRONMENT" = "prd" ]; then
+            docker tag "$LOCAL_IMAGE" "$REMOTE_IMAGE:latest"
+            docker push "$REMOTE_IMAGE:latest"
+            echo "[i] publicado $REMOTE_IMAGE:latest"
+          fi
 
       - name: Atualiza o container (${{ inputs.service }})
         run: docker compose -f "${{ inputs.compose_file }}" up -d "${{ inputs.service }}"
