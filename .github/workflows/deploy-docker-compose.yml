@@ -32,6 +32,11 @@ on:
         required: false
         type: string
         default: "1000:1000"
+      environment:
+        description: >
+          Nome do GitHub Environment (dev/hml/prd) pra aplicar nesse deploy
+        required: true
+        type: string
 
 concurrency:
   group: deploy-${{ inputs.service }}
@@ -40,6 +45,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ${{ inputs.runner_label }}
+    environment: ${{ inputs.environment }}
     defaults:
       run:
         working-directory: ${{ inputs.working_directory }}
