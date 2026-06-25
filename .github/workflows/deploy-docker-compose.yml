@@ -118,4 +118,11 @@ jobs:
 
       - name: Limpeza de imagens antigas
         if: always()
-        run: docker image prune -f
+        run: |
+          docker image prune -f || true
+          IN_USE=$(docker ps -a --format '{{.Image}}' | sort -u)
+          docker images --format '{{.Repository}}:{{.Tag}}' | grep -v '^alpine:' | while read -r img; do
+            if ! printf '%s\n' "$IN_USE" | grep -qxF "$img"; then
+              docker rmi -f "$img" || true
+            fi
+          done
