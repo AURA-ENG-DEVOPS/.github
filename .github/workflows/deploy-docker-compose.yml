@@ -96,6 +96,8 @@ jobs:
           echo "[i] imagem desta execucao: $REMOTE_IMAGE:$TAG"
 
       - name: Build da imagem (${{ inputs.service }})
+        env:
+          BUILDX_NO_DEFAULT_ATTESTATIONS: "1"
         run: docker compose -f "${{ inputs.compose_file }}" build "${{ inputs.service }}"
 
       - name: Login no GHCR
@@ -113,16 +115,7 @@ jobs:
             echo "[i] publicado $REMOTE_IMAGE:latest"
           fi
 
-      - name: Limpa versoes sem tag no GHCR
-        if: ${{ inputs.push_to_registry == 'true' }}
-        uses: actions/delete-package-versions@v5
-        with:
-          package-name: ${{ inputs.service }}
-          package-type: container
-          delete-only-untagged-versions: true
-          min-versions-to-keep: 5
-
-      - name: Limpa versoes com tag antigas no GHCR
+      - name: Limpa versoes antigas
         if: ${{ inputs.push_to_registry == 'true' }}
         uses: actions/delete-package-versions@v5
         with:
