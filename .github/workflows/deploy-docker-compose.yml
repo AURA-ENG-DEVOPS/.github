@@ -120,6 +120,14 @@ jobs:
           package-name: ${{ inputs.service }}
           package-type: container
           delete-only-untagged-versions: true
+          min-versions-to-keep: 0
+
+      - name: Limpa versoes com tag antigas no GHCR
+        if: ${{ inputs.push_to_registry == 'true' }}
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ inputs.service }}
+          package-type: container
           min-versions-to-keep: 5
 
       - name: Atualiza o container (${{ inputs.service }})
