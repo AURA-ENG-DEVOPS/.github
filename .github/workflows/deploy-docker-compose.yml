@@ -115,7 +115,7 @@ jobs:
             echo "[i] publicado $REMOTE_IMAGE:latest"
           fi
 
-      - name: Limpa versoes com tag antigas no GHCR
+      - name: Limpa versoes antigas
         if: ${{ inputs.push_to_registry == 'true' }}
         uses: actions/delete-package-versions@v5
         with:
