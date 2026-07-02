@@ -1,13 +1,58 @@
-name: Deploy SoxManager
+name: "Deploy [AJUSTAR: nome da app]"
 
 on:
   push:
-    branches: [$default-branch]
+    branches: [dev, hml, main]
   workflow_dispatch: {}
 
 jobs:
-  deploy:
+  extract-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: get
+        run: |
+          VERSION=$(grep -oP 'APP_VERSION\s*=\s*"\K[^"]+' "[AJUSTAR: arquivo com a versao]")
+          if [ -z "$VERSION" ]; then echo "ERRO: nao achei APP_VERSION"; exit 1; fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  deploy-dev:
+    needs: extract-version
+    if: github.ref == 'refs/heads/dev'
     uses: AURA-ENG-DEVOPS/.github/.github/workflows/deploy-docker-compose.yml@main
     with:
-      runner_label: "<<< AJUSTAR: ex. soxmanager-borborema >>>"
-      service: "<<< AJUSTAR: nome do service no docker-compose.yml >>>"
+      environment: dev
+      version: ${{ needs.extract-version.outputs.version }}
+      runner_label: runner-devhml
+      service: "[AJUSTAR: nome do service]-dev"
+      host_dirs: |
+        [AJUSTAR: /srv/dev/app/data]
+        [AJUSTAR: /srv/dev/app/logs]
+
+  deploy-hml:
+    needs: extract-version
+    if: github.ref == 'refs/heads/hml'
+    uses: AURA-ENG-DEVOPS/.github/.github/workflows/deploy-docker-compose.yml@main
+    with:
+      environment: hml
+      version: ${{ needs.extract-version.outputs.version }}
+      runner_label: runner-devhml
+      service: "[AJUSTAR: nome do service]-hml"
+      host_dirs: |
+        [AJUSTAR: /srv/hml/app/data]
+        [AJUSTAR: /srv/hml/app/logs]
+
+  deploy-prd:
+    needs: extract-version
+    if: github.ref == 'refs/heads/main'
+    uses: AURA-ENG-DEVOPS/.github/.github/workflows/deploy-docker-compose.yml@main
+    with:
+      environment: prd
+      version: ${{ needs.extract-version.outputs.version }}
+      runner_label: runner-prd
+      service: "[AJUSTAR: nome do service]-prd"
+      host_dirs: |
+        [AJUSTAR: /srv/prd/app/data]
+        [AJUSTAR: /srv/prd/app/logs]
