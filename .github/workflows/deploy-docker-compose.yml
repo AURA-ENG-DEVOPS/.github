@@ -120,7 +120,7 @@ jobs:
           package-name: ${{ inputs.service }}
           package-type: container
           delete-only-untagged-versions: true
-          min-versions-to-keep: 0
+          min-versions-to-keep: 5
 
       - name: Atualiza o container (${{ inputs.service }})
         run: docker compose -f "${{ inputs.compose_file }}" up -d "${{ inputs.service }}"
