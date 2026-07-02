@@ -86,7 +86,7 @@ jobs:
           VERSION="${{ inputs.version }}"
           ENVIRONMENT="${{ inputs.environment }}"
           case "$ENVIRONMENT" in
-            prd) TAG="$VERSION" ;;
+            prd) TAG="$VERSION-$SHA_SHORT" ;;
             hml) TAG="$VERSION-rc.$SHA_SHORT" ;;
             dev) TAG="$VERSION-dev.$SHA_SHORT" ;;
             *) TAG="$VERSION-$ENVIRONMENT.$SHA_SHORT" ;;
