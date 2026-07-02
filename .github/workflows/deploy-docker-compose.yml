@@ -113,6 +113,14 @@ jobs:
             echo "[i] publicado $REMOTE_IMAGE:latest"
           fi
 
+      - name: Limpa versoes sem tag no GHCR
+        if: ${{ inputs.push_to_registry == 'true' }}
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ inputs.service }}
+          package-type: container
+          delete-untagged-versions: true
+
       - name: Atualiza o container (${{ inputs.service }})
         run: docker compose -f "${{ inputs.compose_file }}" up -d "${{ inputs.service }}"
 
