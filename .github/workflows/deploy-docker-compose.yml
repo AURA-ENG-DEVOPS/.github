@@ -39,15 +39,10 @@ on:
         type: string
       push_to_registry:
         description: >
-          Publica a imagem no GHCR depois do build, com tag semver
+          Publica a imagem no GHCR depois do build, com tag de ambiente e SHA
         required: false
         type: string
         default: "true"
-      version:
-        description: >
-          Versao semver core da app sendo deployada (ex.: 0.6.16)
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -78,18 +73,17 @@ jobs:
               "[ -d /hostroot$dir ] || (mkdir -p /hostroot$dir && chown -R ${{ inputs.host_dirs_owner }} /hostroot$dir && echo '[i] criado e chown aplicado em $dir')"
           done
 
-      - name: Calcula tag da imagem (semver)
+      - name: Calcula tag da imagem (ambiente e SHA)
         run: |
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           REMOTE_IMAGE="ghcr.io/$OWNER_LC/${{ inputs.service }}"
           SHA_SHORT="${GITHUB_SHA:0:7}"
-          VERSION="${{ inputs.version }}"
           ENVIRONMENT="${{ inputs.environment }}"
           case "$ENVIRONMENT" in
-            prd) TAG="$VERSION-$SHA_SHORT" ;;
-            hml) TAG="$VERSION-rc.$SHA_SHORT" ;;
-            dev) TAG="$VERSION-dev.$SHA_SHORT" ;;
-            *) TAG="$VERSION-$ENVIRONMENT.$SHA_SHORT" ;;
+            dev) TAG="dev.$SHA_SHORT" ;;
+            hml) TAG="hml.$SHA_SHORT" ;;
+            prd) TAG="prd.$SHA_SHORT" ;;
+            *) TAG="$ENVIRONMENT.$SHA_SHORT" ;;
           esac
           echo "REMOTE_IMAGE=$REMOTE_IMAGE" >> "$GITHUB_ENV"
           echo "APP_IMAGE=$REMOTE_IMAGE:$TAG" >> "$GITHUB_ENV"
