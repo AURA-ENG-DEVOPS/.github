@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       runner_label:
-        description: "Label do runner self-hosted onde o deploy deve rodar (ex.: soxmanager-borborema)"
+        description: "Label do runner self-hosted onde o deploy deve rodar (runner-devhml para dev/hml, runner-prd para prd)"
         required: true
         type: string
       service:
