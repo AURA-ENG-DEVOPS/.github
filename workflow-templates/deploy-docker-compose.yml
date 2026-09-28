@@ -1,4 +1,4 @@
-name: "Deploy [AJUSTAR: nome da app]"
+name: "Deploy [AJUSTAR: nome da aplicacao]"
 
 on:
   push:
@@ -12,10 +12,9 @@ jobs:
     with:
       environment: dev
       runner_label: runner-devhml
-      service: "[AJUSTAR: nome do service]-dev"
-      host_dirs: |
-        [AJUSTAR: /srv/dev/app/data]
-        [AJUSTAR: /srv/dev/app/logs]
+      service: "[AJUSTAR: nome-do-servico]-dev"
+      # host_dirs: |
+      #   /srv/dev/[AJUSTAR: nome-do-servico]/data
 
   deploy-hml:
     if: github.ref == 'refs/heads/hml'
@@ -23,10 +22,9 @@ jobs:
     with:
       environment: hml
       runner_label: runner-devhml
-      service: "[AJUSTAR: nome do service]-hml"
-      host_dirs: |
-        [AJUSTAR: /srv/hml/app/data]
-        [AJUSTAR: /srv/hml/app/logs]
+      service: "[AJUSTAR: nome-do-servico]-hml"
+      # host_dirs: |
+      #   /srv/hml/[AJUSTAR: nome-do-servico]/data
 
   deploy-prd:
     if: github.ref == 'refs/heads/main'
@@ -34,7 +32,6 @@ jobs:
     with:
       environment: prd
       runner_label: runner-prd
-      service: "[AJUSTAR: nome do service]-prd"
-      host_dirs: |
-        [AJUSTAR: /srv/prd/app/data]
-        [AJUSTAR: /srv/prd/app/logs]
+      service: "[AJUSTAR: nome-do-servico]-prd"
+      # host_dirs: |
+      #   /srv/prd/[AJUSTAR: nome-do-servico]/data
