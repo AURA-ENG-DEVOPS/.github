@@ -43,6 +43,24 @@ on:
         required: false
         type: string
         default: "true"
+      runtime_dir:
+        description: >
+          Diretorio absoluto no host onde os arquivos de runtime serao gravados
+        required: false
+        type: string
+        default: ""
+      runtime_files:
+        description: >
+          Manifesto opcional: tipo:nome:caminho:uid:gid[:opcional], uma entrada por linha
+        required: false
+        type: string
+        default: ""
+      runtime_reject_value:
+        description: >
+          Valor exato que deve ser rejeitado para secrets/vars obrigatorios (ex.: PREENCHER)
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -72,6 +90,126 @@ jobs:
             docker run --rm -v /:/hostroot alpine sh -c \
               "[ -d /hostroot$dir ] || (mkdir -p /hostroot$dir && chown -R ${{ inputs.host_dirs_owner }} /hostroot$dir && echo '[i] criado e chown aplicado em $dir')"
           done
+
+      - name: Gravar arquivos de runtime
+        if: ${{ inputs.runtime_files != '' }}
+        env:
+          RUNTIME_DIR: ${{ inputs.runtime_dir }}
+          RUNTIME_FILES: ${{ inputs.runtime_files }}
+          RUNTIME_REJECT_VALUE: ${{ inputs.runtime_reject_value }}
+          RUNTIME_SECRETS_JSON: ${{ toJSON(secrets) }}
+          RUNTIME_VARS_JSON: ${{ toJSON(vars) }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RUNTIME_DIR" ]; then
+            echo "::error::runtime_dir e obrigatorio quando runtime_files e usado"
+            exit 1
+          fi
+          STAGE="$RUNNER_TEMP/runtime-files"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          trap 'rm -rf "$STAGE"' EXIT
+          export STAGE
+
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import shutil
+          import sys
+          from pathlib import Path
+
+          stage = Path(os.environ["STAGE"])
+          secrets = json.loads(os.environ.get("RUNTIME_SECRETS_JSON") or "{}")
+          variables = json.loads(os.environ.get("RUNTIME_VARS_JSON") or "{}")
+          reject = os.environ.get("RUNTIME_REJECT_VALUE", "")
+          manifest = []
+          missing = []
+          seen = set()
+          name_pattern = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+          def fail(message):
+              print(f"::error::{message}", file=sys.stderr)
+              shutil.rmtree(stage, ignore_errors=True)
+              raise SystemExit(1)
+
+          for line_number, raw_line in enumerate(os.environ["RUNTIME_FILES"].splitlines(), 1):
+              line = raw_line.strip()
+              if not line or line.startswith("#"):
+                  continue
+              fields = line.split(":")
+              if len(fields) not in (5, 6):
+                  fail(f"runtime_files linha {line_number} invalida; esperado tipo:nome:caminho:uid:gid[:opcional]")
+              kind, name, relative_path, uid, gid = fields[:5]
+              optional = len(fields) == 6 and fields[5] == "opcional"
+              if kind not in ("secret", "var"):
+                  fail(f"runtime_files linha {line_number}: tipo deve ser secret ou var")
+              if not name_pattern.fullmatch(name):
+                  fail(f"runtime_files linha {line_number}: nome invalido")
+              path = Path(relative_path)
+              if path.is_absolute() or ".." in path.parts or relative_path in ("", "."):
+                  fail(f"runtime_files linha {line_number}: caminho invalido")
+              if not uid.isdigit() or not gid.isdigit():
+                  fail(f"runtime_files linha {line_number}: uid/gid devem ser numericos")
+              if relative_path in seen:
+                  fail(f"runtime_files linha {line_number}: caminho repetido")
+              seen.add(relative_path)
+
+              source = secrets if kind == "secret" else variables
+              value = source.get(name)
+              if value is None or value == "":
+                  if optional:
+                      manifest.append(("remove", relative_path, uid, gid))
+                      continue
+                  missing.append(name)
+                  continue
+              if reject and value == reject:
+                  fail(f"valor rejeitado para {kind} {name}")
+              if not isinstance(value, str):
+                  value = str(value)
+              destination = stage / path
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              destination.write_bytes(value.encode("utf-8"))
+              destination.chmod(0o600)
+              manifest.append(("write", relative_path, uid, gid))
+
+          if missing:
+              fail("faltam runtime values obrigatorios: " + ", ".join(sorted(set(missing))))
+
+          with (stage / ".manifest").open("w", encoding="utf-8") as manifest_file:
+              for action, relative_path, uid, gid in manifest:
+                  manifest_file.write(f"{action}|{relative_path}|{uid}|{gid}\n")
+          (stage / ".manifest").chmod(0o600)
+          PY
+
+          docker run --rm \
+            -v "$STAGE:/source:ro" \
+            -v "$RUNTIME_DIR:/target" \
+            alpine:3.20 sh -eu -c '
+              mkdir -p /target
+              while IFS="|" read -r action relative_path uid gid; do
+                [ -n "$action" ] || continue
+                target="/target/$relative_path"
+                case "$action" in
+                  write)
+                    parent=$(dirname "$target")
+                    mkdir -p "$parent"
+                    chown "$uid:$gid" "$parent"
+                    chmod 700 "$parent"
+                    cp "/source/$relative_path" "$target"
+                    chown "$uid:$gid" "$target"
+                    chmod 600 "$target"
+                    ;;
+                  remove)
+                    rm -f "$target"
+                    ;;
+                  *)
+                    echo "acao de runtime desconhecida: $action" >&2
+                    exit 1
+                    ;;
+                esac
+              done < /source/.manifest
+            '
 
       - name: Calcula tag da imagem (ambiente e SHA)
         run: |
