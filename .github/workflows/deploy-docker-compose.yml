@@ -55,6 +55,12 @@ on:
         required: false
         type: string
         default: ""
+      runtime_reject_value:
+        description: >
+          Valor exato que deve ser rejeitado para secrets/vars obrigatorios (ex.: PREENCHER)
+        required: false
+        type: string
+        default: ""
     secrets:
       runtime_secret_1:
         required: false
@@ -80,12 +86,6 @@ on:
         required: false
       runtime_secret_12:
         required: false
-      runtime_reject_value:
-        description: >
-          Valor exato que deve ser rejeitado para secrets/vars obrigatorios (ex.: PREENCHER)
-        required: false
-        type: string
-        default: ""
 
 permissions:
   contents: read
