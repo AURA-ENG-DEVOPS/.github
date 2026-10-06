@@ -51,10 +51,35 @@ on:
         default: ""
       runtime_files:
         description: >
-          Manifesto opcional: tipo:nome:caminho:uid:gid[:opcional], uma entrada por linha
+          Manifesto opcional: tipo:slot-ou-var:caminho:uid:gid[:opcional], uma entrada por linha
         required: false
         type: string
         default: ""
+    secrets:
+      runtime_secret_1:
+        required: false
+      runtime_secret_2:
+        required: false
+      runtime_secret_3:
+        required: false
+      runtime_secret_4:
+        required: false
+      runtime_secret_5:
+        required: false
+      runtime_secret_6:
+        required: false
+      runtime_secret_7:
+        required: false
+      runtime_secret_8:
+        required: false
+      runtime_secret_9:
+        required: false
+      runtime_secret_10:
+        required: false
+      runtime_secret_11:
+        required: false
+      runtime_secret_12:
+        required: false
       runtime_reject_value:
         description: >
           Valor exato que deve ser rejeitado para secrets/vars obrigatorios (ex.: PREENCHER)
@@ -97,7 +122,18 @@ jobs:
           RUNTIME_DIR: ${{ inputs.runtime_dir }}
           RUNTIME_FILES: ${{ inputs.runtime_files }}
           RUNTIME_REJECT_VALUE: ${{ inputs.runtime_reject_value }}
-          RUNTIME_SECRETS_JSON: ${{ toJSON(secrets) }}
+          RUNTIME_SECRET_1: ${{ secrets.runtime_secret_1 }}
+          RUNTIME_SECRET_2: ${{ secrets.runtime_secret_2 }}
+          RUNTIME_SECRET_3: ${{ secrets.runtime_secret_3 }}
+          RUNTIME_SECRET_4: ${{ secrets.runtime_secret_4 }}
+          RUNTIME_SECRET_5: ${{ secrets.runtime_secret_5 }}
+          RUNTIME_SECRET_6: ${{ secrets.runtime_secret_6 }}
+          RUNTIME_SECRET_7: ${{ secrets.runtime_secret_7 }}
+          RUNTIME_SECRET_8: ${{ secrets.runtime_secret_8 }}
+          RUNTIME_SECRET_9: ${{ secrets.runtime_secret_9 }}
+          RUNTIME_SECRET_10: ${{ secrets.runtime_secret_10 }}
+          RUNTIME_SECRET_11: ${{ secrets.runtime_secret_11 }}
+          RUNTIME_SECRET_12: ${{ secrets.runtime_secret_12 }}
           RUNTIME_VARS_JSON: ${{ toJSON(vars) }}
         run: |
           set -euo pipefail
@@ -120,7 +156,10 @@ jobs:
           from pathlib import Path
 
           stage = Path(os.environ["STAGE"])
-          secrets = json.loads(os.environ.get("RUNTIME_SECRETS_JSON") or "{}")
+          secrets = {
+              f"runtime_secret_{number}": os.environ.get(f"RUNTIME_SECRET_{number}", "")
+              for number in range(1, 13)
+          }
           variables = json.loads(os.environ.get("RUNTIME_VARS_JSON") or "{}")
           reject = os.environ.get("RUNTIME_REJECT_VALUE", "")
           manifest = []
